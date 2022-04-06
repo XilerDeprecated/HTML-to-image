@@ -1,0 +1,27 @@
+{
+	"html": "string [required]",
+	"config": {
+		"format": "png|jpg|jpeg|svg|bmp [required]",
+		"width": "number [optional]",
+		"height": "number [optional]",
+		"disableSmartWidth": "bool [optional]",
+		"encoding": "string [optional]",
+		"quality": "number 1-100 [optional]",
+		"transparent": "boolean [optional]",
+		
+		"crop": {
+			"x": "number [optional]",
+			"y": "number [optional]",
+			"w": "number [optional]",
+			"h": "number [optional]"	
+		},
+		
+		"cookies": [
+			{
+				"key": "string [required]",
+				"value": "string [required]"
+			}
+		]
+	}
+}
+
