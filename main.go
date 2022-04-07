@@ -60,7 +60,7 @@ func isValidFormat(format string) bool {
 	return ok
 }
 
-func generateArguments(config Config) ([]string, error) {
+func generateArgumentsQT(config Config) ([]string, error) {
 	var arguments []string
 
 	if !isValidFormat(config.Format) {
@@ -120,6 +120,27 @@ func generateArguments(config Config) ([]string, error) {
 	return arguments, nil
 }
 
+func generateArgumentsChrome(config Config) ([]string, error) {
+	var arguments []string
+
+	if config.Format != "png" && config.Format != "jpeg" && config.Format != "webp" {
+		return nil, fmt.Errorf("invalid format: %s (valid: png|jpeg|webp)", config.Format)
+	}
+
+	if config.Format != "" {
+		arguments = append(arguments, fmt.Sprintf("--type=%s", config.Format))
+	}
+
+	if config.Width != 0 {
+		arguments = append(arguments, fmt.Sprintf("--width=%d", config.Width))
+	}
+
+	if config.Height != 0 {
+		arguments = append(arguments, fmt.Sprintf("--height=%d", config.Height))
+	}
+
+	return arguments, nil
+}
 func handleGenerateImageRequest(c *fiber.Ctx) error {
 	req := new(GenerateImage)
 
@@ -127,13 +148,34 @@ func handleGenerateImageRequest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	args, err := generateArguments(req.Config)
+	args, err := generateArgumentsQT(req.Config)
 
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	cmd := exec.Command("wkhtmltoimage", append(args, "-", "-")...)
+	args = append(args, "-", "-")
+	return getImageFromCommand(c, req, "wkhtmltoimage", args)
+}
+
+func handleGenerateImageRequestChrome(c *fiber.Ctx) error {
+	req := new(GenerateImage)
+
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+
+	args, err := generateArgumentsChrome(req.Config)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
+	}
+
+	return getImageFromCommand(c, req, "capture-website", args)
+}
+
+func getImageFromCommand(c *fiber.Ctx, req *GenerateImage, command string, args []string) error {
+	cmd := exec.Command(command, args...)
 	cmd.Stdin = strings.NewReader(req.Html)
 
 	var out bytes.Buffer
@@ -167,6 +209,7 @@ func main() {
 
 	v1 := app.Group("/v1")
 	v1.Post("/html-to-image", timeout.New(handleGenerateImageRequest, 5*time.Second))
+	v1.Post("/html-to-image-chrome", timeout.New(handleGenerateImageRequestChrome, 10*time.Second))
 
 	log.Fatal(app.Listen(":8080"))
 }
